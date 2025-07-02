@@ -77,6 +77,32 @@ The server provides the following MCP tools:
 
 This server uses the [WeatherXM Pro API](https://pro.weatherxm.com/documentation) to provide hyper-local weather data from the world's first Decentralized Weather Network. WeatherXM uses a network of community-owned weather stations to provide accurate, real-time weather information.
 
+## GitHub Actions
+
+This repository includes GitHub Actions for automated deployment to Smithery. The workflow will:
+
+1. Run on pushes to the `main` branch and pull requests
+2. Install dependencies using `uv`
+3. Run linting with `ruff`
+4. Perform type checking with `mypy`
+5. Run tests with `pytest`
+6. Validate the Smithery configuration
+7. Deploy to Smithery (only on pushes to `main`)
+
+### Setup
+
+To enable automatic deployment, you need to:
+
+1. Add a `SMITHERY_TOKEN` secret to your GitHub repository:
+   - Go to your repository settings
+   - Navigate to "Secrets and variables" → "Actions"
+   - Add a new repository secret named `SMITHERY_TOKEN`
+   - Set the value to your Smithery API token
+
+2. Ensure your repository has the `main` branch as the default branch
+
+The workflow will automatically deploy your MCP server to Smithery whenever you push changes to the main branch.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
