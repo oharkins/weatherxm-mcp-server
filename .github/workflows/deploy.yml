@@ -32,15 +32,15 @@ jobs:
         
     - name: Lint with ruff
       run: |
-        ruff check .
+        uv run ruff check .
         
     - name: Type check with mypy
       run: |
-        mypy . || echo "Type checking completed"
+        uv run mypy . || echo "Type checking completed"
         
     - name: Run tests
       run: |
-        pytest || echo "No tests found or tests passed"
+        uv run pytest || echo "No tests found or tests passed"
         
     - name: Validate Smithery config
       run: |
