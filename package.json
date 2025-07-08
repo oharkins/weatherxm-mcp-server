@@ -9,11 +9,21 @@
 		"build": "npx @smithery/cli build",
 		"dev": "npx @smithery/cli dev"
 	},
-	"keywords": ["weather", "mcp", "weatherxm", "forecast", "historical-data", "weather-alerts"],
+	"keywords": [
+		"weather",
+		"mcp",
+		"weatherxm",
+		"forecast",
+		"historical-data",
+		"weather-alerts"
+	],
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.12.1",
 		"zod": "^3.25.46"
+	},
+	"devDependencies": {
+		"tsx": "^4.20.3"
 	}
 }

@@ -11,6 +11,7 @@ import {
 	WeatherXMAlertsResponse,
 	WeatherXMCellsResponse,
 	WeatherXMSearchResponse,
+	WeatherXMHealthResponse,
 	Station,
 	WeatherAlert,
 } from "./schemas/index.js"
@@ -122,8 +123,12 @@ export default function createStatelessServer({
 					markdown += `**Precipitation Accumulated:** ${formatPrecipitation(obs.precipitation_accumulated)}\n`
 				}
 
-				// Data quality
-				markdown += `\n**Data Quality Score:** ${(health.data_quality.score * 100).toFixed(0)}%\n`
+				// Data quality (health field is deprecated, may not be available)
+				if (health) {
+					markdown += `\n**Data Quality Score:** ${(health.data_quality.score * 100).toFixed(0)}%\n`
+				} else {
+					markdown += `\n**Data Quality:** Not available (use dedicated health endpoint)\n`
+				}
 
 				return {
 					content: [{ type: "text", text: markdown }],
@@ -676,44 +681,106 @@ export default function createStatelessServer({
 		},
 		async ({ station_id }) => {
 			try {
-				const data = (await weatherxmApiRequest(
-					`/stations/${station_id}/latest`,
-					config.apiKey,
-				)) as WeatherXMLatestResponse
+				// Try the dedicated health endpoint first
+				try {
+					const healthData = (await weatherxmApiRequest(
+						`/stations/${station_id}/health`,
+						config.apiKey,
+					)) as WeatherXMHealthResponse
 
-				const health = data.health
-				const location = data.location
+					const health = healthData.health
+					
+					// Get location from latest endpoint since health endpoint doesn't include it
+					const latestData = (await weatherxmApiRequest(
+						`/stations/${station_id}/latest`,
+						config.apiKey,
+					)) as WeatherXMLatestResponse
+					const location = latestData.location
 
-				let markdown = `# Station Health - ${station_id}\n\n`
-				markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
-				markdown += `**Elevation:** ${location.elevation}m\n\n`
+					let markdown = `# Station Health - ${station_id}\n\n`
+					markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
+					markdown += `**Elevation:** ${location.elevation}m\n\n`
 
-				// Health timestamp
-				const healthTime = formatLocalTime(health.timestamp)
-				markdown += `**Health Check:** ${healthTime}\n\n`
+					// Health timestamp
+					const healthTime = formatLocalTime(health.timestamp)
+					markdown += `**Health Check:** ${healthTime}\n\n`
 
-				// Data quality
-				const dataQualityPercent = (health.data_quality.score * 100).toFixed(0)
-				markdown += `**Data Quality Score:** ${dataQualityPercent}%\n`
+					// Data quality
+					const dataQualityPercent = (health.data_quality.score * 100).toFixed(0)
+					markdown += `**Data Quality Score:** ${dataQualityPercent}%\n`
 
-				// Location quality
-				const locationQualityPercent = (health.location_quality.score * 100).toFixed(0)
-				markdown += `**Location Quality Score:** ${locationQualityPercent}%\n`
-				markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n\n`
+					// Location quality
+					const locationQualityPercent = (health.location_quality.score * 100).toFixed(0)
+					markdown += `**Location Quality Score:** ${locationQualityPercent}%\n`
+					markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n\n`
 
-				// Quality interpretation
-				if (health.data_quality.score >= 0.8) {
-					markdown += "**Overall Assessment:** Excellent data quality\n"
-				} else if (health.data_quality.score >= 0.6) {
-					markdown += "**Overall Assessment:** Good data quality\n"
-				} else if (health.data_quality.score >= 0.4) {
-					markdown += "**Overall Assessment:** Fair data quality\n"
-				} else {
-					markdown += "**Overall Assessment:** Poor data quality - use with caution\n"
-				}
+					// Quality interpretation
+					if (health.data_quality.score >= 0.8) {
+						markdown += "**Overall Assessment:** Excellent data quality\n"
+					} else if (health.data_quality.score >= 0.6) {
+						markdown += "**Overall Assessment:** Good data quality\n"
+					} else if (health.data_quality.score >= 0.4) {
+						markdown += "**Overall Assessment:** Fair data quality\n"
+					} else {
+						markdown += "**Overall Assessment:** Poor data quality - use with caution\n"
+					}
 
-				return {
-					content: [{ type: "text", text: markdown }],
+					return {
+						content: [{ type: "text", text: markdown }],
+					}
+				} catch (healthError) {
+					// Fallback to deprecated health field in latest endpoint
+					const data = (await weatherxmApiRequest(
+						`/stations/${station_id}/latest`,
+						config.apiKey,
+					)) as WeatherXMLatestResponse
+
+					const health = data.health
+					const location = data.location
+
+					if (!health) {
+						return {
+							content: [
+								{
+									type: "text",
+									text: `Health data not available for station ${station_id}. The health endpoint may not be implemented yet.`,
+								},
+							],
+						}
+					}
+
+					let markdown = `# Station Health - ${station_id}\n\n`
+					markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
+					markdown += `**Elevation:** ${location.elevation}m\n\n`
+					markdown += `**Note:** Using deprecated health field from latest endpoint\n\n`
+
+					// Health timestamp
+					const healthTime = formatLocalTime(health.timestamp)
+					markdown += `**Health Check:** ${healthTime}\n\n`
+
+					// Data quality
+					const dataQualityPercent = (health.data_quality.score * 100).toFixed(0)
+					markdown += `**Data Quality Score:** ${dataQualityPercent}%\n`
+
+					// Location quality
+					const locationQualityPercent = (health.location_quality.score * 100).toFixed(0)
+					markdown += `**Location Quality Score:** ${locationQualityPercent}%\n`
+					markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n\n`
+
+					// Quality interpretation
+					if (health.data_quality.score >= 0.8) {
+						markdown += "**Overall Assessment:** Excellent data quality\n"
+					} else if (health.data_quality.score >= 0.6) {
+						markdown += "**Overall Assessment:** Good data quality\n"
+					} else if (health.data_quality.score >= 0.4) {
+						markdown += "**Overall Assessment:** Fair data quality\n"
+					} else {
+						markdown += "**Overall Assessment:** Poor data quality - use with caution\n"
+					}
+
+					return {
+						content: [{ type: "text", text: markdown }],
+					}
 				}
 			} catch (e: unknown) {
 				return {
