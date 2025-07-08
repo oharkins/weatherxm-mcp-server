@@ -52,7 +52,7 @@ export default function createStatelessServer({
 			station_id: z
 				.string()
 				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
+					"WeatherXM station ID. Example: '812c3670-1cff-11ed-9972-4f669f2d96bd'",
 				),
 		},
 		async ({ station_id }) => {
@@ -836,6 +836,78 @@ export default function createStatelessServer({
 							text: `Current local time at station ${station_id} (${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}): ${formattedTime}`,
 						},
 					],
+				}
+			} catch (e: unknown) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
+						},
+					],
+				}
+			}
+		},
+	)
+
+	// Tool: Get Stations Near Location
+	server.tool(
+		"get_stations_near",
+		"Get a list of WeatherXM stations within a specified radius from a location. Uses the stations/near endpoint with radius in meters.",
+		{
+			lat: z
+				.number()
+				.describe(
+					"Latitude of the center of the area in decimal degrees. Example: 40.7128 for New York City.",
+				),
+			lon: z
+				.number()
+				.describe(
+					"Longitude of the center of the area in decimal degrees. Example: -74.0060 for New York City.",
+				),
+			radius: z
+				.number()
+				.describe(
+					"Radius in meters for which stations are queried. Example: 5000 for 5km radius.",
+				),
+		},
+		async ({ lat, lon, radius }) => {
+			try {
+				const data = (await weatherxmApiRequest(
+					`/stations/near?lat=${lat}&lon=${lon}&radius=${radius}`,
+					config.apiKey,
+				)) as WeatherXMStationsResponse
+
+				const stations = data.stations || []
+
+				if (stations.length === 0) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `# WeatherXM Stations Near ${lat}, ${lon}\n\nNo weather stations found within ${radius}m (${(radius/1000).toFixed(1)}km) of the specified location.`,
+							},
+						],
+					}
+				}
+
+				let markdown = `# WeatherXM Stations Near ${lat}, ${lon}\n\n`
+				markdown += `Found ${stations.length} station(s) within ${radius}m (${(radius/1000).toFixed(1)}km)\n\n`
+
+				for (const station of stations) {
+					markdown += `## ${station.name}\n\n`
+					markdown += `**Station ID:** ${station.id}\n`
+					markdown += `**Name:** ${station.name}\n`
+					markdown += `**Location:** ${station.location.lat.toFixed(4)}, ${station.location.lon.toFixed(4)}\n`
+					markdown += `**Elevation:** ${station.location.elevation}m\n`
+					markdown += `**Created:** ${formatLocalTime(station.createdAt)}\n`
+					markdown += `**Cell Index:** ${station.cellIndex}\n`
+
+					markdown += "\n---\n\n"
+				}
+
+				return {
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: unknown) {
 				return {
