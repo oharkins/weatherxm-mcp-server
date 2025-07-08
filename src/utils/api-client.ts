@@ -10,14 +10,19 @@ const USER_AGENT = "WeatherXM-MCP-Server/1.0.0"
  * Make a request to the WeatherXM API
  */
 export async function weatherxmApiRequest(endpoint: string, apiKey: string): Promise<unknown> {
+	const fullUrl = `${WEATHERXM_API_BASE}${endpoint}`
+	console.log(`Making request to: ${fullUrl}`)
+	
 	try {
-		const response = await fetch(`${WEATHERXM_API_BASE}${endpoint}`, {
+		const response = await fetch(fullUrl, {
 			headers: {
 				"User-Agent": USER_AGENT,
 				"Accept": "application/json",
 				"X-API-KEY": apiKey,
 			},
 		})
+
+		console.log(`Response status: ${response.status} ${response.statusText}`)
 
 		if (!response.ok) {
 			// Handle specific WeatherXM API error cases
@@ -26,6 +31,18 @@ export async function weatherxmApiRequest(endpoint: string, apiKey: string): Pro
 			}
 			if (response.status === 404) {
 				throw new Error("Station not found or no data available")
+			}
+			if (response.status === 400) {
+				// Try to get more specific error message
+				try {
+					const errorData = await response.json()
+					if (errorData.message && errorData.message.includes("over limit")) {
+						throw new Error("Requested date is too far in the past. The API has limits on historical data availability.")
+					}
+					throw new Error(`WeatherXM API error: ${errorData.message || response.statusText}`)
+				} catch {
+					throw new Error(`WeatherXM API error: ${response.status} ${response.statusText}`)
+				}
 			}
 			if (response.status === 429) {
 				throw new Error("API rate limit exceeded. Please try again later.")
@@ -38,8 +55,11 @@ export async function weatherxmApiRequest(endpoint: string, apiKey: string): Pro
 			)
 		}
 
-		return await response.json()
+		const data = await response.json()
+		console.log(`Response data keys: ${Object.keys(data)}`)
+		return data
 	} catch (error: unknown) {
+		console.error(`API request error:`, error)
 		if (error instanceof Error && error.message.includes("fetch")) {
 			throw new Error(
 				"Unable to connect to WeatherXM service. Please check your internet connection.",

@@ -162,7 +162,10 @@ export interface WeatherXMDailyForecastResponse {
 }
 
 export interface WeatherXMHistoricalResponse {
-	data: HistoricalDataPoint[]
+	date: string
+	health: Health
+	observations: HistoricalDataPoint[]
+	location: Location
 }
 
 export interface WeatherXMAlertsResponse {

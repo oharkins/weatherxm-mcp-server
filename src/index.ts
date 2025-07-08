@@ -47,7 +47,7 @@ export default function createStatelessServer({
 	// Tool: Get Current Weather for a Station
 	server.tool(
 		"get_current_weather",
-		"Get current weather conditions for a specific WeatherXM station. Perfect for 'What's the weather like at station [station_id]?' questions.",
+		"Get current weather conditions for a specific WeatherXM station by station ID. Use this when you already know the station ID. For location-based queries, use 'get_weather_for_location' or 'search_weather_by_location' instead.",
 		{
 			station_id: z
 				.string()
@@ -149,12 +149,12 @@ export default function createStatelessServer({
 	// Tool: Get Hourly Forecast
 	server.tool(
 		"get_hourly_forecast",
-		"Get hourly weather forecast for a specific WeatherXM station. Shows detailed hourly predictions for the next 48 hours.",
+		"Get hourly weather forecast for a specific WeatherXM station by station ID. Use this when you already know the station ID. For location-based queries, use 'get_weather_forecast_for_location' instead.",
 		{
 			station_id: z
 				.string()
 				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
+					"WeatherXM station ID. Example: '812c3670-1cff-11ed-9972-4f669f2d96bd'",
 				),
 			hours: z
 				.number()
@@ -222,12 +222,12 @@ export default function createStatelessServer({
 	// Tool: Get Daily Forecast
 	server.tool(
 		"get_daily_forecast",
-		"Get daily weather forecast for a specific WeatherXM station. Shows daily predictions including high/low temperatures and precipitation.",
+		"Get daily weather forecast for a specific WeatherXM station by station ID. Use this when you already know the station ID. For location-based queries, use 'get_weather_forecast_for_location' instead.",
 		{
 			station_id: z
 				.string()
 				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
+					"WeatherXM station ID. Example: '812c3670-1cff-11ed-9972-4f669f2d96bd'",
 				),
 			days: z
 				.number()
@@ -292,564 +292,6 @@ export default function createStatelessServer({
 		},
 	)
 
-	// Tool: Get Historical Weather Data
-	server.tool(
-		"get_historical_weather",
-		"Get historical weather data for a specific WeatherXM station. Useful for analyzing past weather patterns and trends.",
-		{
-			station_id: z
-				.string()
-				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
-				),
-			start_date: z
-				.string()
-				.describe(
-					"Start date in ISO format (YYYY-MM-DD). Example: '2024-01-01'",
-				),
-			end_date: z
-				.string()
-				.describe(
-					"End date in ISO format (YYYY-MM-DD). Example: '2024-01-07'",
-				),
-		},
-		async ({ station_id, start_date, end_date }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/stations/${station_id}/historical?start=${start_date}&end=${end_date}`,
-					config.apiKey,
-				)) as WeatherXMHistoricalResponse
-
-				const historicalData = data.data || []
-
-				if (historicalData.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `No historical data available for station ${station_id} between ${start_date} and ${end_date}`,
-							},
-						],
-					}
-				}
-
-				let markdown = `# Historical Weather Data - ${station_id}\n\n`
-				markdown += `Period: ${start_date} to ${end_date}\n`
-				markdown += `Data points: ${historicalData.length}\n\n`
-
-				// Calculate summary statistics
-				const temperatures = historicalData.map(d => d.temperature)
-				const maxTemp = Math.max(...temperatures)
-				const minTemp = Math.min(...temperatures)
-				const avgTemp = temperatures.reduce((a, b) => a + b, 0) / temperatures.length
-
-				const precipTotal = historicalData.reduce((sum, d) => sum + d.precipitation_accumulated, 0)
-
-				markdown += `## Summary Statistics\n\n`
-				markdown += `**Temperature Range:** ${formatTemperature(minTemp)} to ${formatTemperature(maxTemp)}\n`
-				markdown += `**Average Temperature:** ${formatTemperature(avgTemp)}\n`
-				markdown += `**Total Precipitation:** ${formatPrecipitation(precipTotal)}\n\n`
-
-				markdown += `## Recent Observations\n\n`
-
-				// Show last 10 observations
-				const recentData = historicalData.slice(-10)
-				for (const obs of recentData) {
-					const localTime = formatLocalTime(obs.timestamp)
-					markdown += `**${localTime}:** ${formatTemperature(obs.temperature)}, ${obs.humidity.toFixed(0)}% humidity, ${formatWindSpeed(obs.wind_speed)}\n`
-				}
-
-				return {
-					content: [{ type: "text", text: markdown }],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Get Weather Alerts
-	server.tool(
-		"get_weather_alerts",
-		"Get weather alerts and warnings for a specific location or area. Shows active weather alerts from official sources.",
-		{
-			latitude: z
-				.number()
-				.describe(
-					"Latitude in decimal degrees. Example: 40.7128 for New York City.",
-				),
-			longitude: z
-				.number()
-				.describe(
-					"Longitude in decimal degrees. Example: -74.0060 for New York City.",
-				),
-		},
-		async ({ latitude, longitude }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/alerts?lat=${latitude}&lon=${longitude}`,
-					config.apiKey,
-				)) as WeatherXMAlertsResponse
-
-				const alerts = data.alerts || []
-
-				if (alerts.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `No active weather alerts for location ${latitude}, ${longitude}`,
-							},
-						],
-					}
-				}
-
-				let markdown = `# Weather Alerts\n\n`
-				markdown += `Location: ${latitude}, ${longitude}\n`
-				markdown += `Active alerts: ${alerts.length}\n\n`
-
-				for (const alert of alerts) {
-					const effectiveTime = formatLocalTime(alert.effective)
-					const expiresTime = formatLocalTime(alert.expires)
-					
-					markdown += `## ${alert.title}\n\n`
-					markdown += `**Type:** ${alert.type}\n`
-					markdown += `**Severity:** ${alert.severity}\n`
-					markdown += `**Effective:** ${effectiveTime}\n`
-					markdown += `**Expires:** ${expiresTime}\n`
-					markdown += `**Areas:** ${alert.areas.join(', ')}\n\n`
-					markdown += `${alert.description}\n\n`
-					markdown += "---\n\n"
-				}
-
-				return {
-					content: [{ type: "text", text: markdown }],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Find Weather Stations
-	server.tool(
-		"find_weather_stations",
-		"Find WeatherXM weather stations near a location. Useful for discovering available weather stations in an area.",
-		{
-			latitude: z
-				.number()
-				.describe(
-					"Latitude in decimal degrees. Example: 40.7128 for New York City.",
-				),
-			longitude: z
-				.number()
-				.describe(
-					"Longitude in decimal degrees. Example: -74.0060 for New York City.",
-				),
-			radius: z
-				.number()
-				.optional()
-				.default(50)
-				.describe(
-					"Search radius in kilometers (1-100, default 50).",
-				),
-		},
-		async ({ latitude, longitude, radius }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/stations?lat=${latitude}&lon=${longitude}&radius=${radius}`,
-					config.apiKey,
-				)) as WeatherXMStationsResponse
-
-				const stations = data.stations || []
-
-				if (stations.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `# WeatherXM Stations\n\nNo weather stations found within ${radius}km of ${latitude}, ${longitude}.`,
-							},
-						],
-					}
-				}
-
-				let markdown = `# WeatherXM Stations Near ${latitude}, ${longitude}\n\n`
-				markdown += `Found ${stations.length} station(s) within ${radius}km\n\n`
-
-				for (const station of stations) {
-					markdown += `## ${station.name}\n\n`
-					markdown += `**Station ID:** ${station.id}\n`
-					markdown += `**Name:** ${station.name}\n`
-					markdown += `**Location:** ${station.location.lat.toFixed(4)}, ${station.location.lon.toFixed(4)}\n`
-					markdown += `**Elevation:** ${station.location.elevation}m\n`
-					markdown += `**Created:** ${formatLocalTime(station.createdAt)}\n`
-					markdown += `**Cell Index:** ${station.cellIndex}\n`
-
-					markdown += "\n---\n\n"
-				}
-
-				return {
-					content: [{ type: "text", text: markdown }],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Search Weather Stations
-	server.tool(
-		"search_weather_stations",
-		"Search for WeatherXM weather stations by name or location. Useful for finding specific stations or stations in particular areas.",
-		{
-			query: z
-				.string()
-				.describe(
-					"Search query. Can be station name, city, or location description.",
-				),
-			page: z
-				.number()
-				.optional()
-				.default(1)
-				.describe(
-					"Page number for pagination (default 1)",
-				),
-			limit: z
-				.number()
-				.optional()
-				.default(10)
-				.describe(
-					"Number of results per page (1-50, default 10)",
-				),
-		},
-		async ({ query, page, limit }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/stations/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
-					config.apiKey,
-				)) as WeatherXMSearchResponse
-
-				const results = data.results
-				const stations = results.stations || []
-
-				if (stations.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `No weather stations found matching "${query}"`,
-							},
-						],
-					}
-				}
-
-				let markdown = `# Weather Station Search Results\n\n`
-				markdown += `Query: "${query}"\n`
-				markdown += `Found ${results.total} total stations\n`
-				markdown += `Page ${results.page} of ${Math.ceil(results.total / results.limit)}\n\n`
-
-				for (const station of stations) {
-					markdown += `## ${station.name}\n\n`
-					markdown += `**Station ID:** ${station.id}\n`
-					markdown += `**Location:** ${station.location.lat.toFixed(4)}, ${station.location.lon.toFixed(4)}\n`
-					markdown += `**Elevation:** ${station.location.elevation}m\n`
-					markdown += `**Created:** ${formatLocalTime(station.createdAt)}\n`
-					markdown += `**Cell Index:** ${station.cellIndex}\n`
-
-					markdown += "\n---\n\n"
-				}
-
-				return {
-					content: [{ type: "text", text: markdown }],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Get Weather Cells
-	server.tool(
-		"get_weather_cells",
-		"Get WeatherXM weather cells (geographic areas) near a location. Shows the decentralized weather network coverage areas.",
-		{
-			latitude: z
-				.number()
-				.describe(
-					"Latitude in decimal degrees. Example: 40.7128 for New York City.",
-				),
-			longitude: z
-				.number()
-				.describe(
-					"Longitude in decimal degrees. Example: -74.0060 for New York City.",
-				),
-			radius: z
-				.number()
-				.optional()
-				.default(50)
-				.describe(
-					"Search radius in kilometers (1-100, default 50).",
-				),
-		},
-		async ({ latitude, longitude, radius }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/cells?lat=${latitude}&lon=${longitude}&radius=${radius}`,
-					config.apiKey,
-				)) as WeatherXMCellsResponse
-
-				const cells = data.cells || []
-
-				if (cells.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `No weather cells found within ${radius}km of ${latitude}, ${longitude}`,
-							},
-						],
-					}
-				}
-
-				let markdown = `# WeatherXM Cells Near ${latitude}, ${longitude}\n\n`
-				markdown += `Found ${cells.length} cell(s) within ${radius}km\n\n`
-
-				for (const cell of cells) {
-					markdown += `## Cell ${cell.index}\n\n`
-					markdown += `**Center:** ${cell.center.lat.toFixed(4)}, ${cell.center.lon.toFixed(4)}\n`
-					markdown += `**Elevation:** ${cell.center.elevation}m\n`
-					markdown += `**Stations:** ${cell.station_count}\n`
-
-					markdown += "\n---\n\n"
-				}
-
-				return {
-					content: [{ type: "text", text: markdown }],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Get Station Health
-	server.tool(
-		"get_station_health",
-		"Get health and data quality information for a WeatherXM station. Useful for understanding the reliability of weather data from a specific station.",
-		{
-			station_id: z
-				.string()
-				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
-				),
-		},
-		async ({ station_id }) => {
-			try {
-				// Try the dedicated health endpoint first
-				try {
-					const healthData = (await weatherxmApiRequest(
-						`/stations/${station_id}/health`,
-						config.apiKey,
-					)) as WeatherXMHealthResponse
-
-					const health = healthData.health
-					
-					// Get location from latest endpoint since health endpoint doesn't include it
-					const latestData = (await weatherxmApiRequest(
-						`/stations/${station_id}/latest`,
-						config.apiKey,
-					)) as WeatherXMLatestResponse
-					const location = latestData.location
-
-					let markdown = `# Station Health - ${station_id}\n\n`
-					markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
-					markdown += `**Elevation:** ${location.elevation}m\n\n`
-
-					// Health timestamp
-					const healthTime = formatLocalTime(health.timestamp)
-					markdown += `**Health Check:** ${healthTime}\n\n`
-
-					// Data quality
-					const dataQualityPercent = (health.data_quality.score * 100).toFixed(0)
-					markdown += `**Data Quality Score:** ${dataQualityPercent}%\n`
-
-					// Location quality
-					const locationQualityPercent = (health.location_quality.score * 100).toFixed(0)
-					markdown += `**Location Quality Score:** ${locationQualityPercent}%\n`
-					markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n\n`
-
-					// Quality interpretation
-					if (health.data_quality.score >= 0.8) {
-						markdown += "**Overall Assessment:** Excellent data quality\n"
-					} else if (health.data_quality.score >= 0.6) {
-						markdown += "**Overall Assessment:** Good data quality\n"
-					} else if (health.data_quality.score >= 0.4) {
-						markdown += "**Overall Assessment:** Fair data quality\n"
-					} else {
-						markdown += "**Overall Assessment:** Poor data quality - use with caution\n"
-					}
-
-					return {
-						content: [{ type: "text", text: markdown }],
-					}
-				} catch (healthError) {
-					// Fallback to deprecated health field in latest endpoint
-					const data = (await weatherxmApiRequest(
-						`/stations/${station_id}/latest`,
-						config.apiKey,
-					)) as WeatherXMLatestResponse
-
-					const health = data.health
-					const location = data.location
-
-					if (!health) {
-						return {
-							content: [
-								{
-									type: "text",
-									text: `Health data not available for station ${station_id}. The health endpoint may not be implemented yet.`,
-								},
-							],
-						}
-					}
-
-					let markdown = `# Station Health - ${station_id}\n\n`
-					markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
-					markdown += `**Elevation:** ${location.elevation}m\n\n`
-					markdown += `**Note:** Using deprecated health field from latest endpoint\n\n`
-
-					// Health timestamp
-					const healthTime = formatLocalTime(health.timestamp)
-					markdown += `**Health Check:** ${healthTime}\n\n`
-
-					// Data quality
-					const dataQualityPercent = (health.data_quality.score * 100).toFixed(0)
-					markdown += `**Data Quality Score:** ${dataQualityPercent}%\n`
-
-					// Location quality
-					const locationQualityPercent = (health.location_quality.score * 100).toFixed(0)
-					markdown += `**Location Quality Score:** ${locationQualityPercent}%\n`
-					markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n\n`
-
-					// Quality interpretation
-					if (health.data_quality.score >= 0.8) {
-						markdown += "**Overall Assessment:** Excellent data quality\n"
-					} else if (health.data_quality.score >= 0.6) {
-						markdown += "**Overall Assessment:** Good data quality\n"
-					} else if (health.data_quality.score >= 0.4) {
-						markdown += "**Overall Assessment:** Fair data quality\n"
-					} else {
-						markdown += "**Overall Assessment:** Poor data quality - use with caution\n"
-					}
-
-					return {
-						content: [{ type: "text", text: markdown }],
-					}
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
-	// Tool: Get Local Time for Station
-	server.tool(
-		"get_station_local_time",
-		"Get the current local time for a WeatherXM station location. Shows what time it is right now at the station's location.",
-		{
-			station_id: z
-				.string()
-				.describe(
-					"WeatherXM station ID. Example: 'station_123' or 'WXM123456'",
-				),
-		},
-		async ({ station_id }) => {
-			try {
-				const data = (await weatherxmApiRequest(
-					`/stations/${station_id}/latest`,
-					config.apiKey,
-				)) as WeatherXMLatestResponse
-
-				const location = data.location
-				const now = new Date()
-
-				// Use the station's timezone from the observation timestamp
-				const stationTimezone = new Date(data.observation.timestamp).getTimezoneOffset()
-				const localTime = new Date(now.getTime() - (stationTimezone * 60 * 1000))
-
-				const formattedTime = localTime.toLocaleString("en-US", {
-					year: "numeric",
-					month: "short",
-					day: "numeric",
-					hour: "numeric",
-					minute: "2-digit",
-					hour12: true,
-				})
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Current local time at station ${station_id} (${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}): ${formattedTime}`,
-						},
-					],
-				}
-			} catch (e: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
-						},
-					],
-				}
-			}
-		},
-	)
-
 	// Tool: Get Stations Near Location
 	server.tool(
 		"get_stations_near",
@@ -867,6 +309,7 @@ export default function createStatelessServer({
 				),
 			radius: z
 				.number()
+				.default(10000)
 				.describe(
 					"Radius in meters for which stations are queried. Example: 5000 for 5km radius.",
 				),
@@ -922,5 +365,190 @@ export default function createStatelessServer({
 		},
 	)
 
+	// Tool: Get Historical Observations
+	server.tool(
+		"get_historical_observations",
+		"Get historical weather observations for a specific WeatherXM station on a specific date. Use this when you already know the station ID and want to see past weather data. Note: Only recent past dates are supported (typically last few days). Future dates are not supported.",
+		{
+			station_id: z
+				.string()
+				.describe(
+					"WeatherXM station ID. Example: '812c3670-1cff-11ed-9972-4f669f2d96bd'",
+				),
+			date: z
+				.string()
+				.describe(
+					"Date in YYYY-MM-DD format (UTC). Must be a recent past date (typically last few days), not in the future. Example: '2025-07-01'",
+				),
+		},
+		async ({ station_id, date }) => {
+			try {
+				// Validate date format
+				const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+				if (!dateRegex.test(date)) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: Invalid date format. Please use YYYY-MM-DD format (e.g., '2024-10-29')`,
+							},
+						],
+					}
+				}
+
+				// Validate that the date is not in the future
+				const requestedDate = new Date(date + 'T00:00:00Z')
+				const today = new Date()
+				today.setUTCHours(0, 0, 0, 0) // Set to start of today in UTC
+				
+				if (requestedDate > today) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: Cannot request historical data for future dates. The date ${date} is in the future. Please use a past date.`,
+							},
+						],
+					}
+				}
+
+				// Validate that the date is not too far in the past (WeatherXM API has very short limits)
+				const oneWeekAgo = new Date()
+				oneWeekAgo.setUTCDate(oneWeekAgo.getUTCDate() - 7)
+				oneWeekAgo.setUTCHours(0, 0, 0, 0)
+				
+				if (requestedDate < oneWeekAgo) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: The date ${date} is too far in the past. WeatherXM API has very strict limits on historical data and typically only provides data from the last few days. Please use a more recent date.`,
+							},
+						],
+					}
+				}
+
+				console.log(`Requesting historical data for station ${station_id} on date ${date}`)
+				
+				const data = (await weatherxmApiRequest(
+					`/stations/${station_id}/history?date=${date}`,
+					config.apiKey,
+				)) as WeatherXMHistoricalResponse
+
+				console.log(`Historical data response received for station ${station_id}`)
+
+				const observations = data.observations || []
+				const location = data.location
+				const health = data.health
+
+				if (observations.length === 0) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `No historical observations available for station ${station_id} on ${date}. This could be because:\n- The station has no data for this specific date\n- The station was not operational on this date\n- The data is not available in the WeatherXM API`,
+							},
+						],
+					}
+				}
+
+				let markdown = `# Historical Weather Observations\n\n`
+				markdown += `**Station ID:** ${station_id}\n`
+				markdown += `**Date:** ${date}\n`
+				markdown += `**Location:** ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}\n`
+				markdown += `**Elevation:** ${location.elevation}m\n\n`
+
+				// Data quality information
+				if (health) {
+					markdown += `**Data Quality Score:** ${(health.data_quality.score * 100).toFixed(0)}%\n`
+					markdown += `**Location Quality Score:** ${(health.location_quality.score * 100).toFixed(0)}%\n`
+					if (health.location_quality.reason) {
+						markdown += `**Location Quality Reason:** ${health.location_quality.reason}\n`
+					}
+					markdown += `**Health Timestamp:** ${formatLocalTime(health.timestamp)}\n\n`
+				}
+
+				markdown += `**Total Observations:** ${observations.length}\n\n`
+
+				// Group observations by hour for better readability
+				const hourlyGroups = new Map<string, typeof observations>()
+				for (const obs of observations) {
+					const hour = obs.timestamp.substring(0, 13) + ":00:00" // Group by hour
+					if (!hourlyGroups.has(hour)) {
+						hourlyGroups.set(hour, [])
+					}
+					hourlyGroups.get(hour)!.push(obs)
+				}
+
+				// Sort hours chronologically
+				const sortedHours = Array.from(hourlyGroups.keys()).sort()
+
+				for (const hour of sortedHours) {
+					const hourObservations = hourlyGroups.get(hour)!
+					const localTime = formatLocalTime(hour)
+					
+					markdown += `## ${localTime}\n\n`
+					markdown += `**Observations in this hour:** ${hourObservations.length}\n\n`
+
+					// Show the first observation of the hour as representative
+					const representative = hourObservations[0]
+					const windDirection = getWindDirection(representative.wind_direction)
+					
+					markdown += `**Temperature:** ${formatTemperature(representative.temperature)}\n`
+					markdown += `**Feels Like:** ${formatTemperature(representative.feels_like)}\n`
+					markdown += `**Conditions:** ${getWeatherIconDescription(representative.icon)}\n`
+					markdown += `**Humidity:** ${representative.humidity.toFixed(0)}%\n`
+					markdown += `**Dew Point:** ${formatTemperature(representative.dew_point)}\n`
+					markdown += `**Wind:** ${formatWindSpeed(representative.wind_speed)} from ${windDirection} (${representative.wind_direction}°)\n`
+					
+					if (representative.wind_gust > representative.wind_speed) {
+						markdown += `**Wind Gust:** ${formatWindSpeed(representative.wind_gust)}\n`
+					}
+					
+					markdown += `**Pressure:** ${formatPressure(representative.pressure)}\n`
+					
+					if (representative.uv_index > 0) {
+						markdown += `**UV Index:** ${representative.uv_index.toFixed(1)}\n`
+					}
+					
+					if (representative.solar_irradiance > 0) {
+						markdown += `**Solar Irradiance:** ${representative.solar_irradiance.toFixed(0)} W/m²\n`
+					}
+					
+					if (representative.precipitation_rate > 0) {
+						markdown += `**Precipitation Rate:** ${formatPrecipitation(representative.precipitation_rate)}/hr\n`
+					}
+					
+					if (representative.precipitation_accumulated > 0) {
+						markdown += `**Precipitation Accumulated:** ${formatPrecipitation(representative.precipitation_accumulated)}\n`
+					}
+
+					// If there are multiple observations in this hour, show a summary
+					if (hourObservations.length > 1) {
+						const temps = hourObservations.map(o => o.temperature)
+						const minTemp = Math.min(...temps)
+						const maxTemp = Math.max(...temps)
+						markdown += `**Temperature Range:** ${formatTemperature(minTemp)} to ${formatTemperature(maxTemp)}\n`
+					}
+
+					markdown += "\n---\n\n"
+				}
+
+				return {
+					content: [{ type: "text", text: markdown }],
+				}
+			} catch (e: unknown) {
+				console.error(`Historical observations error:`, e)
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Error: ${e instanceof Error ? e.message : "Unknown error"}`,
+						},
+					],
+				}
+			}
+		},
+	)
 	return server.server
 }

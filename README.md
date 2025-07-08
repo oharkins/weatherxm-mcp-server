@@ -21,6 +21,75 @@ A Model Context Protocol (MCP) server that provides comprehensive access to real
 - Node.js 18 or higher
 - A WeatherXM Pro API key (get one at [pro.weatherxm.com](https://pro.weatherxm.com))
 
+## Configuration
+
+The server requires a WeatherXM Pro API key to function. You'll need to provide this when connecting to the server.
+
+### Getting a WeatherXM Pro API Key
+
+1. Visit [pro.weatherxm.com](https://pro.weatherxm.com)
+2. Sign up for a Pro account
+3. Navigate to the API section
+4. Generate an API key
+
+### Quick Fix for "Connection Failed" / "Load Failed"
+
+The most common cause of connection failures is a missing or invalid WeatherXM Pro API key. Follow these steps:
+
+#### 1. Test Your API Key
+
+Run this command to test your API key:
+
+```bash
+# Set your API key
+export WEATHERXM_API_KEY="your_api_key_here"
+
+# Test the connection
+node test-api.js
+```
+
+#### 2. Configure Your MCP Client
+
+**Option A: Environment Variable (Recommended)**
+
+```bash
+export WEATHERXM_API_KEY="your_api_key_here"
+```
+
+**Option B: MCP Client Configuration**
+
+For Claude Desktop or other MCP clients, add to your configuration:
+
+```json
+{
+  "mcpServers": {
+    "weatherxm": {
+      "command": "npx",
+      "args": ["@oharkins/weatherxm-mcp-server"],
+      "env": {
+        "WEATHERXM_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**Option C: Direct Server Configuration**
+
+If running the server directly:
+
+```bash
+WEATHERXM_API_KEY="your_api_key_here" npm run dev
+```
+
+#### 3. Verify the Connection
+
+After configuration, the server should start successfully and you should be able to use weather tools like:
+
+- "What's the weather like at station WXM123456?"
+- "Find weather stations near New York City"
+- "Get weather alerts for 40.7128, -74.0060"
+
 ## Installation
 
 1. Clone this repository:
@@ -38,17 +107,6 @@ npm install
 ```bash
 npm run build
 ```
-
-## Configuration
-
-The server requires a WeatherXM Pro API key to function. You'll need to provide this when connecting to the server.
-
-### Getting a WeatherXM Pro API Key
-
-1. Visit [pro.weatherxm.com](https://pro.weatherxm.com)
-2. Sign up for a Pro account
-3. Navigate to the API section
-4. Generate an API key
 
 ## Available Tools
 
@@ -263,6 +321,33 @@ The server handles various error conditions:
 - **500 Internal Server Error**: WeatherXM service temporarily unavailable
 - **Network Errors**: Connection issues
 
+## Troubleshooting
+
+### Common Error Messages
+
+**Error: "Invalid API key"**
+- Double-check your API key from pro.weatherxm.com
+- Ensure the API key is properly set in your environment
+
+**Error: "Station not found"**
+- Try searching for stations first: "Find weather stations near [your location]"
+- Use the station IDs returned by the search
+
+**Error: "API rate limit exceeded"**
+- Wait a few minutes before trying again
+- Consider upgrading your WeatherXM Pro plan
+
+**Error: "WeatherXM service temporarily unavailable"**
+- The WeatherXM service may be experiencing issues
+- Try again later
+
+### Common Issues
+
+1. **Missing API Key**: The server requires a valid WeatherXM Pro API key
+2. **Invalid API Key**: Double-check the key from your WeatherXM Pro account
+3. **Network Issues**: Ensure you have internet connectivity
+4. **Rate Limiting**: You may have exceeded your API quota
+
 ## Development
 
 ### Running in Development Mode
@@ -305,6 +390,7 @@ ISC
 ## Support
 
 For issues related to:
-- **WeatherXM Pro API**: Contact WeatherXM support
-- **MCP Server**: Open an issue in this repository
-- **Weather Data**: Check the data quality scores provided by the server 
+- **WeatherXM Pro API**: Contact WeatherXM support at pro.weatherxm.com
+- **MCP Server Issues**: Check the main README.md for more details
+- **Weather Data**: Check the data quality scores provided by the server
+- **Configuration Issues**: Review the Configuration and Troubleshooting sections above 
