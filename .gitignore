@@ -110,3 +110,6 @@ config.json
 test-results/
 playwright-report/
 test-results.xml 
+
+# Smithery
+.smithery/
