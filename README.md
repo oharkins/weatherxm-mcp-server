@@ -1,4 +1,5 @@
 # WeatherXM Pro MCP Server
+[![smithery badge](https://smithery.ai/badge/@oharkins/weatherxm-mcp-server)](https://smithery.ai/server/@oharkins/weatherxm-mcp-server)
 
 A Model Context Protocol (MCP) server that provides comprehensive access to real-time weather data from the WeatherXM decentralized weather network worldwide.
 
