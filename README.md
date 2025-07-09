@@ -82,6 +82,67 @@ If running the server directly:
 WEATHERXM_API_KEY="your_api_key_here" npm run dev
 ```
 
+### MCP Client Configuration Examples
+
+#### Using the Published NPM Package
+
+For most users, the recommended approach is to use the published npm package:
+
+```json
+{
+  "mcpServers": {
+    "weatherxm": {
+      "command": "npx",
+      "args": ["@oharkins/weatherxm-mcp-server"],
+      "env": {
+        "WEATHERXM_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Using Local Development Version
+
+For developers or users who want to run the latest development version:
+
+```json
+{
+  "mcpServers": {
+    "weatherxm": {
+      "command": "node",
+      "args": ["/path/to/weatherxm-mcp-server/dist/index.js"],
+      "env": {
+        "WEATHERXM_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**Note**: Replace `/path/to/weatherxm-mcp-server` with the actual path to your cloned repository. Make sure to run `npm run build:tsc` first to generate the `dist/index.js` file using the traditional TypeScript compiler.
+
+#### Using Local Development with TypeScript
+
+For active development with hot reloading:
+
+```json
+{
+  "mcpServers": {
+    "weatherxm": {
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "/path/to/weatherxm-mcp-server",
+      "env": {
+        "WEATHERXM_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**Note**: This requires the development dependencies to be installed (`npm install`) and is only recommended for development purposes.
+
 #### 3. Verify the Connection
 
 After configuration, the server should start successfully and you should be able to use weather tools like:
@@ -104,9 +165,18 @@ npm install
 ```
 
 3. Build the server:
+
+**Option A: Using Smithery (Default)**
 ```bash
 npm run build
 ```
+
+**Option B: Using Traditional TypeScript**
+```bash
+npm run build:tsc
+```
+
+**Note**: The traditional TypeScript build creates a `dist/` directory with compiled JavaScript files. Use this option if you prefer not to use Smithery or need the compiled output for deployment.
 
 ## Available Tools
 
@@ -351,9 +421,18 @@ The server handles various error conditions:
 ## Development
 
 ### Running in Development Mode
+
+**Option A: Using Smithery (Default)**
 ```bash
 npm run dev
 ```
+
+**Option B: Using TypeScript with tsx**
+```bash
+npm run dev:tsc
+```
+
+**Note**: The `dev:tsc` command uses `tsx` for fast TypeScript execution without compilation. Use this for development if you prefer not to use Smithery.
 
 ### Building for Production
 ```bash

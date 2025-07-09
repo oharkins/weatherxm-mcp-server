@@ -14,7 +14,7 @@ import {
 	WeatherXMHealthResponse,
 	Station,
 	WeatherAlert,
-} from "./schemas/index.js"
+} from "./schemas/index"
 
 // Import utilities
 import {
@@ -27,7 +27,7 @@ import {
 	formatTimeAgo,
 	getWeatherIconDescription,
 	weatherxmApiRequest,
-} from "./utils/index.js"
+} from "./utils/index"
 
 // Configuration schema to require API key
 export const configSchema = z.object({
