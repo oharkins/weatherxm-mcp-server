@@ -10,7 +10,7 @@
 		"build:tsc": "tsc",
 		"dev": "npx @smithery/cli dev",
 		"dev:tsc": "tsx src/index.ts",
-		"start": "npm run build && node .smithery/index.cjs"
+		"start": "npm run build:tsc && node dist/index.js"
 	},
 	"keywords": [
 		"weather",
