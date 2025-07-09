@@ -1,1 +1,41 @@
 runtime: typescript
+name: weatherxm-mcp-server
+version: 2.0.0
+description: MCP server to access comprehensive weather data from the WeatherXM Pro decentralized weather network
+
+# MCP Server Configuration
+mcp:
+  server:
+    name: "WeatherXM Pro MCP Server"
+    version: "2.0.0"
+    description: "Access comprehensive weather data from the WeatherXM Pro decentralized weather network"
+  
+  # Configuration schema for API key
+  config:
+    schema:
+      type: object
+      properties:
+        apiKey:
+          type: string
+          description: "WeatherXM Pro API key required for accessing weather data"
+      required:
+        - apiKey
+
+# Build configuration
+build:
+  entry: src/index.ts
+  outDir: dist
+  target: es2022
+  format: esm
+
+# Development configuration
+dev:
+  watch: true
+  port: 3000
+
+# Distribution configuration
+dist:
+  include:
+    - "package.json"
+    - "README.md"
+    - "LICENSE"

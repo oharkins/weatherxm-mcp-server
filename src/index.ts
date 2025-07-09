@@ -8,13 +8,7 @@ import {
 	WeatherXMHourlyForecastResponse,
 	WeatherXMDailyForecastResponse,
 	WeatherXMHistoricalResponse,
-	WeatherXMAlertsResponse,
-	WeatherXMCellsResponse,
-	WeatherXMSearchResponse,
-	WeatherXMHealthResponse,
-	Station,
-	WeatherAlert,
-} from "./schemas/index"
+} from "./schemas/index.js"
 
 // Import utilities
 import {
@@ -27,7 +21,7 @@ import {
 	formatTimeAgo,
 	getWeatherIconDescription,
 	weatherxmApiRequest,
-} from "./utils/index"
+} from "./utils/index.js"
 
 // Configuration schema to require API key
 export const configSchema = z.object({

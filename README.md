@@ -178,6 +178,64 @@ npm run build:tsc
 
 **Note**: The traditional TypeScript build creates a `dist/` directory with compiled JavaScript files. Use this option if you prefer not to use Smithery or need the compiled output for deployment.
 
+## Development and Local Runner
+
+This server supports both Smithery and local runner capabilities for development and testing.
+
+### Using Smithery (Recommended)
+
+Smithery provides a modern development experience with hot reloading and optimized builds.
+
+**Development mode:**
+```bash
+npm run dev
+```
+
+**Build for production:**
+```bash
+npm run build
+```
+
+### Using Local Runner
+
+For local development and testing without Smithery:
+
+**Set your API key:**
+```bash
+export WEATHERXM_API_KEY="your_api_key_here"
+```
+
+**Run the local runner:**
+```bash
+npm run runner
+```
+
+**Or run directly with tsx:**
+```bash
+tsx src/runner.ts
+```
+
+### Development Scripts
+
+- `npm run dev` - Start Smithery development server
+- `npm run dev:tsc` - Start development with TypeScript compiler
+- `npm run runner` - Run local server for testing
+- `npm run build` - Build with Smithery
+- `npm run build:tsc` - Build with TypeScript compiler
+- `npm run clean` - Clean build artifacts
+- `npm start` - Run built server
+- `npm run start:dev` - Run development server
+- `npm test` - Test server creation
+
+### Configuration Files
+
+The repository includes example configuration files for MCP clients:
+
+- `mcp-config-example.json` - Standard configuration using the published npm package
+- `mcp-config-local-dev.json` - Local development configuration
+
+Copy and modify these files as needed for your MCP client setup.
+
 ## Available Tools
 
 ### 1. Get Current Weather (`get_current_weather`)
